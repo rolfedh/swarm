@@ -12,6 +12,8 @@ weight=80
 
 # Docker Swarm command line reference
 
+-   [swarm](swarm.md) - Run a Swarm container on Docker Engine
+
 -   [create](create.md) - Create a discovery token
 -   [list](list.md) - List the nodes in a Docker cluster
 -   [manage](manage.md) - Manage a Docker cluster
