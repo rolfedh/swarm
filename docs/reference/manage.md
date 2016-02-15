@@ -1,47 +1,137 @@
-$ docker run swarm manage --help
-Usage: swarm manage [OPTIONS] <discovery>
+<!--[metadata]>
++++
+title = "manage"
+description = "Create a Swarm manager."
+keywords = ["swarm, create, manage"]
+[menu.main]
+identifier="swarm.manage"
+parent="smn_swarm_subcmds"
++++
+<![end-metadata]-->
 
-Manage a docker cluster
+# manage
 
-Arguments:
-   <discovery>    discovery service to use [$SWARM_DISCOVERY]
-                   * token://<token>
-                   * consul://<ip>/<path>
-                   * etcd://<ip1>,<ip2>/<path>
-                   * file://path/to/file
-                   * zk://<ip1>,<ip2>/<path>
-                   * [nodes://]<ip1>,<ip2>
+Prerequisite: Before using `manage` to create a Swarm manager, establish a discovery backend as described in [this discovery topic](../discovery.md).
 
-Options:
-   --strategy "spread"							placement strategy to use [spread, binpack, random]
-   --filter, -f [--filter option --filter option]			filter to use [health, port, dependency, affinity, constraint]
-   --host, -H [--host option --host option]				ip/socket to listen on [$SWARM_HOST]
-   --replication							Enable Swarm manager replication
-   --replication-ttl "15s"						Leader lock release time on failure
-   --advertise, --addr 							Address of the swarm manager joining the cluster. Other swarm manager(s) MUST be able to reach the swarm manager at this address. [$SWARM_ADVERTISE]
-   --tls								use TLS; implied by --tlsverify=true
-   --tlscacert 								trust only remotes providing a certificate signed by the CA given here
-   --tlscert 								path to TLS certificate file
-   --tlskey 								path to TLS key file
-   --tlsverify								use TLS and verify the remote
-   --engine-refresh-min-interval "30s"					set engine refresh minimum interval
-   --engine-refresh-max-interval "60s"					set engine refresh maximum interval
-   --engine-failure-retry "3"						set engine failure retry count
-   --engine-refresh-retry "3"						deprecated; replaced by --engine-failure-retry
-   --heartbeat "60s"							period between each heartbeat
-   --api-enable-cors, --cors						enable CORS headers in the remote API
-   --cluster-driver, -c "swarm"						cluster driver to use [swarm, mesos-experimental]
-   --discovery-opt [--discovery-opt option --discovery-opt option]	discovery options
-   --cluster-opt [--cluster-opt option --cluster-opt option]		cluster driver options
-		 * swarm.overcommit=0.05		overcommit to apply on resources
-		 * swarm.createretry=0			container create retry count after initial failure
-		 * mesos.address=			address to bind on [$SWARM_MESOS_ADDRESS]
-		 * mesos.checkpointfailover=false	checkpointing allows a restarted slave to reconnect with old executors and recover status updates, at the cost of disk I/O [$SWARM_MESOS_CHECKPOINT_FAILOVER]
-		 * mesos.port=				port to bind on [$SWARM_MESOS_PORT]
-		 * mesos.offertimeout=30s		timeout for offers [$SWARM_MESOS_OFFER_TIMEOUT]
-		 * mesos.offerrefusetimeout=5s		seconds to consider unused resources refused [$SWARM_MESOS_OFFER_REFUSE_TIMEOUT]
-		 * mesos.tasktimeout=5s			timeout for task creation [$SWARM_MESOS_TASK_TIMEOUT]
-		 * mesos.user=				framework user [$SWARM_MESOS_USER]
+The `manage` command creates a Swarm manager whose purpose is to receive commands on behalf of the cluster and assign containers to Swarm nodes. You can create multiple Swarm managers as part of a high-availability cluster.
 
-rolfedlugy-hegwer at RsMBP in ~
-$
+By default, the Swarm manager uses the `spread` strategy, which assigns containers to the Swarm node with the most resources. You can configure the manager to use other strategies.
+
+With this strategy, the manager ranks nodes by the amount of resources it has.  the number of containers it has (or is running?) and by the available CPU and RAM. Then, it assigns new containers to the node with the highest ranking.
+
+## Syntax
+
+    $ docker run swarm manage [OPTIONS] <discovery>
+
+## Examples
+
+
+    $ docker run swarm manage -H tcp://<ip:port> etcd://<etcd_addr1>,<etcd_addr2>/<optional path prefix>
+
+For example, the syntax to create the primary manager in a high-availability Swarm cluster looks like this:
+
+    $ docker run -d -p 4000:4000 swarm manage -H :4000 --replication --advertise 172.30.0.161:4000  consul://172.30.0.161:8500
+
+## Input Arguments
+
+### `<discovery>` — discovery backend
+
+Before you can create a Swarm manager, get a discovery token from an existing discovery backend, or create a discovery backend. Then, use the `discovery` argument to specify that token or the discovery backend nodes. The environment variable `<discovery>` sets is `$SWARM_DISCOVERY`.
+
+For more information and examples, see the [Docker Swarm Discovery](../discovery.md) topic.
+
+For the `<discovery>` argument, enter one of the following values:
+
+* `token://<token>`
+* `consul://<ip1>/<path>`
+* `etcd://<ip1>,<ip2>,<ip2>/<path>`
+* `file://<path/to/file>`
+* `zk://<ip1>,<ip2>/<path>`
+* `[nodes://]<iprange>,<iprange>`
+
+Where:
+
+* `<token>` is a discovery token generated by the Docker Hub Hosted Discovery Service. To generate this discovery token, use the [`create`](create.md) command.
+> Warning: The Docker Hub Hosted Discovery Service is not recommended for production use. It’s intended to be used for testing/development. See the discovery backends for production use.
+
+* `ip1`, `ip2`, `ip3` are each the IP address and port numbers of a discovery backend node.
+* `path` is an optional value that specifies the path of a directory on the discovery backend that separates one key-value store from another.
+* `path/to/file` is the path to a file that contains a static list of the Swarm managers and nodes that are members the cluster.
+* `iprange` is a range of IP addresses followed by a port number
+
+## Options
+
+### `--strategy "<value>"` — scheduler placement strategy
+Tells Docker Swarm scheduler which placement strategy to use, where `<value>` is one of the following:
+  * `spread` — Assigns each container to the Swarm node with the most free resources. If you do not use the `--strategy` option, the scheduler applies the spread strategy.
+  * `binpack` - Assigns containers to one Swarm node until it is full before assigning them to another one.
+  * `random` - Assigns each container to a random Swarm node.
+
+For more information and examples, see [Docker Swarm strategies](../scheduler/strategy.md).
+
+### `--filter <value>` or `-f <value>` — scheduler filter
+Tells Docker Swarm scheduler which nodes to use when creating and running a container.
+
+Where `<value>` is:
+  * `health` — Use nodes that are running and communicating with the discovery backend.
+  * `port` — For containers that have a static port mapping, use nodes whose corresponding port number is available (i.e., not occupied by another container or process).
+  * `dependency` — For containers that have a declared dependency, use nodes that already have a container with the same dependency.
+  * `affinity` — For containers that have a declared affinity, use nodes that already have a container with the same affinity.
+  * `constraint` — For containers that have a declared constraint, use nodes that already have a container with the same constraint.
+
+You can use multiple scheduler filters, like this:
+
+`--filter <value> --filter <value>`
+
+For more information and examples, see [Swarm filters](../scheduler/filters.md).
+
+### `--host <ip>:<port>` or `-H <ip>:<port>` — listen to IP/socket
+Specify the network IP address and port number on which the manager listens for incoming messages. If you omit `<ip>`, the manager uses the default host IP number.
+
+The environment variable `--host` sets is `$SWARM_HOST`.
+<TBD - or is it the other way around? Can you assign the value of the environment variables to the options? >
+
+### `--replication` — Enable Swarm manager replication
+Enable Swarm manager replication between the *primary* and *replica* managers in a high-availability cluster. Replication mirrors <TBD> information from the primary to the replica managers so that, if the primary manager fails, a replica can become primary.  
+
+### `--replication-ttl "15s"` — Leader lock release time on failure
+Specify the number of seconds before notifying replica managers that a primary manager is down or unreachable. This notification triggers an election in which one of the replica managers becomes the primary manager.
+
+### `--advertise` or `--addr` — Advertise the IP and port number of the swarm manager joining the cluster.
+
+Other swarm manager(s) MUST be able to reach the swarm manager at this address. The environment variable `--advertise` sets is `$SWARM_ADVERTISE`.
+
+### `--tls` — use TLS; implied by --tlsverify=true
+### `--tlscacert` — trust only remotes providing a certificate signed by the CA given here
+### `--tlscert` — path to TLS certificate file
+### `--tlskey` — path to TLS key file
+### `--tlsverify` — use TLS and verify the remote
+### `--engine-refresh-min-interval "30s"` — set engine refresh minimum interval
+### `--engine-refresh-max-interval "60s"` — set engine refresh maximum interval
+### `--engine-failure-retry "3"` — set engine failure retry count
+### `--engine-refresh-retry "3"` — deprecated; replaced by --engine-failure-retry
+### `--heartbeat "60s"` — period between each heartbeat
+### `--api-enable-cors` or `--cors` — enable CORS headers in the remote API
+### `--cluster-driver` or `-c "swarm"` — cluster driver to use
+ [swarm, mesos-experimental]
+### `--discovery-opt` — discovery options
+
+You can enter discovery options, like this:
+
+`--discovery-opt <value> --discovery-opt <value>`
+
+### `--cluster-opt` — cluster driver options
+
+You can enter multiple cluster driver options, like this:
+
+`--cluster-opt <value> --cluster-opt <value>`
+
+  * `swarm.overcommit=0.05` — overcommit to apply on resources
+  * `swarm.createretry=0` — container create retry count after initial failure
+  * `mesos.address=` — address to bind on. This option sets the value of the   `$SWARM_MESOS_ADDRESS` environment variable.
+  * `mesos.checkpointfailover=false` — checkpointing allows a restarted slave to reconnect with old executors and recover status updates, at the cost of disk I/O. This option sets the value of the `$SWARM_MESOS_CHECKPOINT_FAILOVER` environment variable.
+  * `mesos.port=` — port to bind on. This option sets the value of the   `$SWARM_MESOS_PORT` environment variable.
+  * `mesos.offertimeout=30s` — timeout for offers. This option sets the value of the `$SWARM_MESOS_OFFER_TIMEOUT` environment variable.
+  * `mesos.offerrefusetimeout=5s` — seconds to consider unused resources refused. This option sets the value of the `$SWARM_MESOS_OFFER_REFUSE_TIMEOUT` environment variable.
+  * `mesos.tasktimeout=5s` — timeout for task creation. This option sets the value of the `$SWARM_MESOS_TASK_TIMEOUT` environment variable.
+  * `mesos.user=` — framework user. This option sets the value of the `$SWARM_MESOS_USER` environment variable.
