@@ -15,22 +15,24 @@ Prerequisite: Before using `manage` to create a Swarm manager, establish a disco
 
 The `manage` command creates a Swarm manager whose purpose is to receive commands on behalf of the cluster and assign containers to Swarm nodes. You can create multiple Swarm managers as part of a high-availability cluster.
 
-By default, the Swarm manager uses the `spread` strategy, which assigns containers to the Swarm node with the most resources. You can configure the manager to use other strategies.
-
-With this strategy, the manager ranks nodes by the amount of resources it has.  the number of containers it has (or is running?) and by the available CPU and RAM. Then, it assigns new containers to the node with the highest ranking.
-
 ## Syntax
 
     $ docker run swarm manage [OPTIONS] <discovery>
 
-## Examples
+For example, to create a primary manager in a high-availability Swarm cluster:
 
+    $ docker run -d -p 4000:4000 swarm manage -H :4000 --replication --advertise 172.30.0.161:4000  consul://172.30.0.165:8500
 
-    $ docker run swarm manage -H tcp://<ip:port> etcd://<etcd_addr1>,<etcd_addr2>/<optional path prefix>
+Where the following items configure the Swarm manager to:
+* `-H :4000`: Listen for incoming messages using the default network interface and port 4000.
+* `--replication`: Copy its failover data to the other managers.  
+* `--advertise 172.30.0.161:4000`: Advertise its IP address and port number to other swarm managers.
+* `consul://172.30.0.165:8500`: Notify the consul discovery backend that it is a member of the cluster.
 
-For example, the syntax to create the primary manager in a high-availability Swarm cluster looks like this:
+For example, to create a Swarm manager that uses Transport Layer Security (TLS):
 
-    $ docker run -d -p 4000:4000 swarm manage -H :4000 --replication --advertise 172.30.0.161:4000  consul://172.30.0.161:8500
+    $ docker run -d -p 3376:3376 -v /home/ubuntu/.certs:/certs:ro swarm manage --tlsverify --tlscacert=/certs/ca.pem --tlscert=/certs/cert.pem --tlskey=/certs/key.pem --host=0.0.0.0:3376 token://$TOKEN
+
 
 ## Input Arguments
 
@@ -55,7 +57,7 @@ Where:
 > Warning: The Docker Hub Hosted Discovery Service is not recommended for production use. It’s intended to be used for testing/development. See the discovery backends for production use.
 
 * `ip1`, `ip2`, `ip3` are each the IP address and port numbers of a discovery backend node.
-* `path` is an optional value that specifies the path of a directory on the discovery backend that separates one key-value store from another.
+* `path` (optional) specifies a path to a key-value store on the discovery backend. For example, to maintain multiple distinct key-value stores on one backend, use separate paths for each one.
 * `path/to/file` is the path to a file that contains a static list of the Swarm managers and nodes that are members the cluster.
 * `iprange` is a range of IP addresses followed by a port number
 
@@ -86,7 +88,7 @@ You can use multiple scheduler filters, like this:
 For more information and examples, see [Swarm filters](../scheduler/filters.md).
 
 ### `--host <ip>:<port>` or `-H <ip>:<port>` — listen to IP/socket
-Specify the network IP address and port number on which the manager listens for incoming messages. If you omit `<ip>`, the manager uses the default host IP number.
+Specify the IP address and port number to which the manager listens for incoming messages. If you omit `<ip>`, the manager uses the default host IP.
 
 The environment variable `--host` sets is `$SWARM_HOST`.
 <TBD - or is it the other way around? Can you assign the value of the environment variables to the options? >
@@ -94,31 +96,57 @@ The environment variable `--host` sets is `$SWARM_HOST`.
 ### `--replication` — Enable Swarm manager replication
 Enable Swarm manager replication between the *primary* and *replica* managers in a high-availability cluster. Replication mirrors <TBD> information from the primary to the replica managers so that, if the primary manager fails, a replica can become primary.  
 
-### `--replication-ttl "15s"` — Leader lock release time on failure
-Specify the number of seconds before notifying replica managers that a primary manager is down or unreachable. This notification triggers an election in which one of the replica managers becomes the primary manager.
+### `--replication-ttl "<delay>s"` — Leader lock release time on failure
+Specify the delay, in seconds, before notifying replica managers that the primary manager is down or unreachable. This notification triggers an election in which one of the replica managers becomes the primary manager. If you don't specify this option, the default delay is 15 seconds.
 
-### `--advertise` or `--addr` — Advertise the IP and port number of the swarm manager joining the cluster.
+### `--advertise <ip>:<port>` or `--addr <ip>:<port>` — Advertise manager's IP and port number
+Advertise the IP address and port number of the Swarm manager that's joining the cluster. Other swarm managers MUST be able to reach this swarm manager at this address.
 
-Other swarm manager(s) MUST be able to reach the swarm manager at this address. The environment variable `--advertise` sets is `$SWARM_ADVERTISE`.
+The environment variable `--advertise` sets is `$SWARM_ADVERTISE`.
 
-### `--tls` — use TLS; implied by --tlsverify=true
-### `--tlscacert` — trust only remotes providing a certificate signed by the CA given here
+$ docker run -d -p 3376:3376 -v /home/ubuntu/.certs:/certs:ro swarm manage --tlsverify --tlscacert=/certs/ca.pem --tlscert=/certs/cert.pem --tlskey=/certs/key.pem --host=0.0.0.0:3376 token://$TOKEN
+
+### `--tls` — use TLS
+Use transport layer security (TLS). If you use `--tlsverify`, you do not need to use `--tls`.
+
+### `--tlscacert=<path/file>` — specify a CA's public key
+Specify the path and file name of the public key (certificate) from a Certificate Authority (CA). When specified, the manager trusts only remotes that provide a certificate signed by the same CA. For example: `--tlscacert=/certs/ca.pem`.
+
 ### `--tlscert` — path to TLS certificate file
+Specify the path and file name of the manager's certificate (signed by the CA). For example, `--tlscert=/certs/cert.pem`.
+
 ### `--tlskey` — path to TLS key file
+Specify the path and file name of the manager's private key (signed by the CA). For example, `--tlskey=/certs/key.pem`.
+
 ### `--tlsverify` — use TLS and verify the remote
-### `--engine-refresh-min-interval "30s"` — set engine refresh minimum interval
-### `--engine-refresh-max-interval "60s"` — set engine refresh maximum interval
-### `--engine-failure-retry "3"` — set engine failure retry count
-### `--engine-refresh-retry "3"` — deprecated; replaced by --engine-failure-retry
-### `--heartbeat "60s"` — period between each heartbeat
+Enable transport layer security (TLS) and verify the remote using TLS. If you use `--tlsverify`, you do not need to use `--tls`.
+
+### `--engine-refresh-min-interval "<interval>s"` — set engine refresh minimum interval
+Specify the minimum interval, in seconds, between Engine refresh. If you don't specify this option, the default interval is 30 seconds.
+
+### `--engine-refresh-max-interval "<interval>s"` — set engine refresh maximum interval
+Specify the minimum interval, in seconds, between Engine refresh. If you don't specify this option, the default interval is 60 seconds.
+
+### `--engine-failure-retry "<number>"` — set engine failure retry count
+Specify the number of retries to attempt if the engine fails. If you don't specify this option, the default number is 3 retries.
+
+### `--engine-refresh-retry "<number>"` — deprecated
+Deprecated; replaced by `--engine-failure-retry`. The default number is 3 retries.
+
+### `--heartbeat "<interval>s"` — period between each heartbeat
+Specify the interval, in seconds, between heartbeats. If you don't specify this option, the default interval is 60 seconds.
+
 ### `--api-enable-cors` or `--cors` — enable CORS headers in the remote API
-### `--cluster-driver` or `-c "swarm"` — cluster driver to use
- [swarm, mesos-experimental]
-### `--discovery-opt` — discovery options
+Enable enable CORS headers in the remote API.
 
-You can enter discovery options, like this:
+### `--cluster-driver "<driver>"` or `-c "<driver>"` — cluster driver to use
+Specify a cluster driver to use. Where `<driver>` is one of the following:
+* `swarm` is the Docker Swarm driver.
+* `mesos-experimental` is the Mesos cluster driver.
 
-`--discovery-opt <value> --discovery-opt <value>`
+If you do not use this option, the default driver is `swarm`.
+
+For more information about using Mesos driver, see [Using Docker Swarm and Mesos](https://github.com/docker/swarm/blob/master/cluster/mesos/README.md).
 
 ### `--cluster-opt` — cluster driver options
 
@@ -126,6 +154,7 @@ You can enter multiple cluster driver options, like this:
 
 `--cluster-opt <value> --cluster-opt <value>`
 
+Where `<value>` is one of the following:
   * `swarm.overcommit=0.05` — overcommit to apply on resources
   * `swarm.createretry=0` — container create retry count after initial failure
   * `mesos.address=` — address to bind on. This option sets the value of the   `$SWARM_MESOS_ADDRESS` environment variable.
@@ -135,3 +164,18 @@ You can enter multiple cluster driver options, like this:
   * `mesos.offerrefusetimeout=5s` — seconds to consider unused resources refused. This option sets the value of the `$SWARM_MESOS_OFFER_REFUSE_TIMEOUT` environment variable.
   * `mesos.tasktimeout=5s` — timeout for task creation. This option sets the value of the `$SWARM_MESOS_TASK_TIMEOUT` environment variable.
   * `mesos.user=` — framework user. This option sets the value of the `$SWARM_MESOS_USER` environment variable.
+
+### `--discovery-opt` — discovery options
+Specify discovery options, such as paths to the CA certificate, certificate, and private key of the distributed k/v store on a Consul or etcd discovery backend. 
+
+For more information, see [Use TLS with distributed key/value discovery](../discovery.md/#use-tls-with-distributed-key-value-discovery)
+
+You can enter multiple discovery options, like this:
+
+`--discovery-opt <value> --discovery-opt <value>`
+
+For example:
+
+    --discovery-opt kv.cacertfile=/path/to/mycacert.pem \
+    --discovery-opt kv.certfile=/path/to/mycert.pem \
+    --discovery-opt kv.keyfile=/path/to/mykey.pem \
