@@ -16,9 +16,9 @@ weight=80
 
 -   [create](create.md) - Create a discovery token
 -   [list](list.md) - List the nodes in a Docker cluster
--   [manage](manage.md) - Manage a Docker cluster
--   [join](join.md) - Join a Docker cluster
--   [help](help.md) - See a list of commands, or help for one command
+-   [manage](manage.md) - Create a Swarm manager
+-   [join](join.md) - Create a Swarm node
+-   [help](help.md) - See a list of Swarm commands, or help for one command
 
 # Options
 -  `--debug			debug mode [$DEBUG]`
