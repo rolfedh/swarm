@@ -11,15 +11,15 @@ parent="smn_swarm_subcmds"
 
 # create
 
-The `create` command uses Docker Hub's hosted discovery service to create a unique *discovery token* for your cluster. For example:
+The `create` command uses Docker Hub's hosted discovery backend to create a unique *discovery token* for your cluster. For example:
 
     $ docker run --rm  swarm create
     86222732d62b6868d441d430aee4f055
 
-> Warning: Docker Hub's hosted discovery service is not recommended for production use. It’s intended to be used for testing/development. See the discovery backends for production use.
+Later, when you use [`manage`](manage.md) or [`join`](join.md) to create Swarm managers and nodes, you use the discovery token in the `<discovery>` argument (e.g., `token://86222732d62b6868d441d430aee4f055`). The discovery backend registers each new Swarm manager and node that uses the token as a member of your cluster.
 
-Later, when you create Swarm managers and nodes, you use the `<discovery>` argument to specify the token (e.g., `token://86222732d62b6868d441d430aee4f055`). The discovery service registers each new Swarm manager and node that uses the token as a member of your cluster.
+Some documentation also refers to the discovery token as a *cluster_id*.
 
-Some documentation also refers to the discovery token as *cluster_id*.
+> Warning: Docker Hub's hosted discovery backend is not recommended for production use. It’s intended only for testing/development.
 
-For more information and examples, see the [Docker Swarm Discovery](../discovery.md) topic.
+For more information and examples about this and other discovery backends, see the [Docker Swarm Discovery](../discovery.md) topic.
