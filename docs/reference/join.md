@@ -76,7 +76,16 @@ The environment variable for `--advertise` is `$SWARM_ADVERTISE`.
 Specify the interval, in seconds, between heartbeats the node sends to the discovery backend to indicate that it is healthy and reachable. By default, the interval is 60 seconds.
 
 ### --ttl "180s" — Sets the expiration of an ephemeral node
+Specify the time-to-live (TTL) interval, in seconds, of an ephemeral node. The default value is `180s`.
 
 ### --delay "0s" — Add a random delay in [0s,delay] to avoid synchronized registration
+Specify the maximum interval for a random delay, in seconds, before the node registers with the discovery backend. If you deploy a large number of nodes simultaneously, the random delay spreads registrations out over the interval and avoids saturating the discovery backend.
 
-### --discovery-opt [--discovery-opt option --discovery-opt option] — discovery options
+### `--discovery-opt <value>` — Discovery options
+Specify discovery options, such as paths to the TLS files; the CA's public key certificate, the certificate, and the private key of the distributed K/V store on a Consul or etcd discovery backend. You can enter multiple discovery options. For example:
+
+    --discovery-opt kv.cacertfile=/path/to/mycacert.pem \
+    --discovery-opt kv.certfile=/path/to/mycert.pem \
+    --discovery-opt kv.keyfile=/path/to/mykey.pem \
+
+For more information, see [Use TLS with distributed key/value discovery](../discovery.md/#use-tls-with-distributed-key-value-discovery)

@@ -131,6 +131,8 @@ Enable transport layer security (TLS) and accept connections from only those man
 ### `--engine-refresh-min-interval "<interval>s"` — Set engine refresh minimum interval
 Specify the minimum interval, in seconds, between Engine refresh. By default, the interval is 30 seconds.
 
+> When a manager performs an *Engine refresh*, it gets updated information about an Engine in the cluster. The manager uses this information to, among other things, determine whether the Engine is *healthy*. If there is a connection failure, the manager determines that the node is *unhealthy*. The manager *retries* an Engine refresh a specified number of times. If the Engine responds to one of the retries, the manager determines that the Engine is healthy again. Otherwise, the manager stops retrying and ignores the Engine. 
+
 ### `--engine-refresh-max-interval "<interval>s"` — Set engine refresh maximum interval
 Specify the minimum interval, in seconds, between Engine refresh. By default, the interval is 60 seconds.
 
