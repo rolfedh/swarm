@@ -9,7 +9,7 @@ parent="smn_swarm_subcmds"
 +++
 <![end-metadata]-->
 
-# help
+# help - Display information about a command
 
 The `help` command displays information about how to use a command.
 

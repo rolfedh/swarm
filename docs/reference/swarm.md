@@ -1,12 +1,11 @@
 <!--[metadata]>
 +++
-title = "Command line reference"
-description = "Docker Swarm Commands Overview"
+title = "swarm"
+description = "swarm command overview"
 keywords = ["Swarm, cluster, commands"]
 [menu.main]
-identifier="smn_swarm_subcmds"
-parent="workw_swarm"
-weight=80
+identifier="swarm.swarm"
+parent="smn_swarm_subcmds"
 +++
 <![end-metadata]-->
 

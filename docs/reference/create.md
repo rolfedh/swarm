@@ -9,7 +9,7 @@ parent="smn_swarm_subcmds"
 +++
 <![end-metadata]-->
 
-# create
+# create  — Create a discovery token
 
 The `create` command uses Docker Hub's hosted discovery backend to create a unique *discovery token* for your cluster. For example:
 
